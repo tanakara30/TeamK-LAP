@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Team K-LAP</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--text:#111827;--muted:#667085;--line:#d0d5dd;--blue:#2563eb;--green:#16a34a;--orange:#ea580c}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--text);-webkit-tap-highlight-color:transparent}
+header{position:sticky;top:0;z-index:10;background:rgba(244,246,248,.97);border-bottom:1px solid var(--line);padding:8px}
+h1{font-size:15px;margin:0 0 6px}.app-title{font-size:32px;font-weight:950;letter-spacing:-1px;margin:2px 0 4px;color:#111827}
+.top{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.clock{font-variant-numeric:tabular-nums;font-size:clamp(38px,11vw,64px);font-weight:900;line-height:1;letter-spacing:-1px}
+.selects{display:flex;gap:6px}
+select{font:inherit;border:1px solid var(--line);border-radius:12px;padding:10px 6px;background:white;font-weight:800;max-width:118px}
+.controls{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
+button{font:inherit;border:0;border-radius:12px;padding:10px 6px;font-weight:850;background:#e5e7eb;color:var(--text);touch-action:manipulation;user-select:none}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.38}
+.primary{background:var(--blue);color:white}
+.success{background:var(--green);color:white}
+.warn{background:var(--orange);color:white}
+.ghost{background:white;border:1px solid var(--line)}
+main{padding:8px;max-width:980px;margin:0 auto}
+.panel{background:white;border:1px solid var(--line);border-radius:16px;padding:8px;margin-bottom:8px}
+.names{display:grid;gap:6px}
+.names input{width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 4px;font-weight:850;text-align:center;font-size:13px}
+.grid{display:grid;gap:6px;align-items:stretch}
+.lap-label{display:flex;align-items:center;justify-content:center;border-radius:12px;background:#111827;color:white;font-weight:900;font-size:15px;min-height:58px}
+.tap{min-height:58px;padding:5px 2px;font-size:15px;line-height:1.05}
+.tap.goalOnly{min-height:92px}
+.tap .name{display:block;font-size:11px;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tap .time{display:block;font-size:12px;font-variant-numeric:tabular-nums;margin-top:3px}
+.tap.done{background:#d1fae5;color:#065f46;border:1px solid #86efac}
+.tap.next{background:var(--blue);color:white}
+.tap.locked{background:#eef2f7;color:#98a2b3}
+.tap.goal.next{background:var(--green);color:white}
+.rank{display:block;font-size:18px;font-weight:950;margin-bottom:3px}
+.row-actions{display:grid;gap:6px;margin-top:6px}
+.undo{font-size:12px;min-height:38px;padding:6px}
+.hint{font-size:12px;color:var(--muted);line-height:1.35;margin:6px 0 0}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{border-bottom:1px solid #eef0f3;padding:5px 3px;text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(17,24,39,.95);color:white;padding:10px 14px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+.toast.show{opacity:1}
+@media(max-width:430px){
+header{padding:7px}
+main{padding:7px}
+.lap-label{font-size:13px;min-height:54px}
+.tap{min-height:54px;font-size:13px;border-radius:10px}
+.tap.goalOnly{min-height:86px}
+.tap .name{font-size:10px}
+.tap .time{font-size:10px}
+.rank{font-size:16px}
+.undo{font-size:11px;min-height:34px;padding:4px 2px}
+button{border-radius:10px;padding:9px 4px;font-size:13px}
+.names{gap:4px}
+.names input{font-size:12px;padding:7px 2px}
+}
+</style>
+</head>
+<body>
+<header>
+<h1 class="app-title">Team K-LAP</h1>
+<div class="top">
+  <div id="clock" class="clock">0:00.00</div>
+  <div class="selects">
+    <select id="eventSelect">
+      <option value="goal">ゴールのみ</option>
+      <option value="400">400m</option>
+      <option value="600">600m</option>
+      <option value="800">800m</option>
+      <option value="1200">1200m</option>
+      <option value="1500">1500m</option>
+    </select>
+    <select id="countSelect">
+      <option value="1">1人</option>
+      <option value="2">2人</option>
+      <option value="3">3人</option>
+      <option value="4">4人</option>
+      <option value="5">5人</option>
+      <option value="6">6人</option>
+      <option value="7">7人</option>
+      <option value="8">8人</option>
+    </select>
+  </div>
+</div>
+<div class="controls">
+  <button id="startBtn" class="primary">スタート</button>
+  <button id="stopBtn" class="ghost" disabled>停止</button>
+  <button id="resetBtn" class="warn">リセット</button>
+</div>
+</header>
+
+<main>
+<section class="panel">
+  <div id="names" class="names"></div>
+  <p id="hint" class="hint"></p>
+</section>
+
+<section class="panel">
+  <div id="lapGrid" class="grid"></div>
+  <div id="undoGrid" class="row-actions"></div>
+</section>
+
+<section class="panel">
+  <table id="resultTable"><thead></thead><tbody></tbody></table>
+</section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const EVENTS={
+  goal:{name:'ゴールのみ',points:['GOAL'],hint:'ラップなし。ゴールした子のボタンを見えた順に押します。着順も自動で記録します。'},
+  400:{name:'400m',points:[200,400],hint:'400mは200m・400mを記録します。'},
+  600:{name:'600m',points:[200,400,600],hint:'600mは200m・400m・600mを記録します。'},
+  800:{name:'800m',points:[200,400,600,800],hint:'800mは200m・400m・600m・800mを記録します。'},
+  1200:{name:'1200m',points:[400,800,1200],hint:'1200mは400m・800m・1200mを記録します。'},
+  1500:{name:'1500m',points:[400,800,1200,1500],hint:'1500mは400m・800m・1200m・1500mを記録します。'}
+};
+
+let eventKey=localStorage.getItem('lapTimerEvent')||'goal';
+let athleteCount=parseInt(localStorage.getItem('lapTimerCount')||'5',10);
+let athletes=[];
+let running=false,startAt=0,elapsedBefore=0,rafId=null;
+
+const $=id=>document.getElementById(id);
+const clock=$('clock'),toast=$('toast');
+
+function uid(i){return crypto.randomUUID?crypto.randomUUID():String(Date.now()+i)}
+function makeAthlete(i){return {id:uid(i),name:i===0?'さな':i===1?'こなつ':`選手${i+1}`,splits:[]}}
+
+function load(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('lapTimerAthletes')||'null');
+    if(Array.isArray(saved)&&saved.length){
+      athletes=saved.map((a,i)=>({id:uid(i),name:a.name||`選手${i+1}`,splits:[]}));
+    }
+  }catch(e){}
+  if(!athletes.length) athletes=Array.from({length:athleteCount},(_,i)=>makeAthlete(i));
+  while(athletes.length<athleteCount) athletes.push(makeAthlete(athletes.length));
+  athletes=athletes.slice(0,athleteCount);
+}
+
+function save(){
+  localStorage.setItem('lapTimerAthletes',JSON.stringify(athletes.map(a=>({name:a.name}))));
+  localStorage.setItem('lapTimerEvent',eventKey);
+  localStorage.setItem('lapTimerCount',String(athleteCount));
+}
+
+function fmt(ms){
+  if(ms==null||Number.isNaN(ms))return '';
+  const t=Math.max(0,ms),m=Math.floor(t/60000),s=Math.floor((t%60000)/1000),h=Math.floor((t%1000)/10);
+  return `${m}:${String(s).padStart(2,'0')}.${String(h).padStart(2,'0')}`;
+}
+function nowElapsed(){return running?elapsedBefore+(performance.now()-startAt):elapsedBefore}
+function esc(str){return String(str).replace(/[&<>"]/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))}
+function show(msg){toast.textContent=msg;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),1200)}
+
+function tick(){clock.textContent=fmt(nowElapsed());rafId=requestAnimationFrame(tick)}
+function start(){
+  if(running)return;
+  running=true;startAt=performance.now();
+  $('startBtn').disabled=true;$('stopBtn').disabled=false;
+  tick();
+}
+function stop(manual=true){
+  if(!running)return;
+  elapsedBefore=nowElapsed();running=false;
+  $('startBtn').disabled=false;$('stopBtn').disabled=true;
+  cancelAnimationFrame(rafId);clock.textContent=fmt(elapsedBefore);
+  if(!manual)show('全員ゴール。自動停止');
+}
+function clearTimes(){
+  running=false;startAt=0;elapsedBefore=0;cancelAnimationFrame(rafId);
+  athletes.forEach(a=>a.splits=[]);
+  clock.textContent=fmt(0);
+  $('startBtn').disabled=false;$('stopBtn').disabled=true;
+}
+function resetAll(){
+  if(!confirm('記録をリセットしますか？'))return;
+  clearTimes();render();save();
+}
+function setEvent(v){
+  if(v===eventKey)return;
+  if(athletes.some(a=>a.splits.length)&&!confirm('種目変更で記録をリセットします。よろしいですか？')){$('eventSelect').value=eventKey;return}
+  eventKey=v;clearTimes();render();save();
+}
+function setCount(n){
+  n=parseInt(n,10);
+  if(n===athleteCount)return;
+  if(athletes.some(a=>a.splits.length)&&!confirm('人数変更で記録をリセットします。よろしいですか？')){$('countSelect').value=String(athleteCount);return}
+  athleteCount=n;
+  while(athletes.length<n)athletes.push(makeAthlete(athletes.length));
+  athletes=athletes.slice(0,n);
+  clearTimes();render();save();
+}
+function allFinished(){
+  return athletes.length>0&&athletes.every(a=>a.splits.length>=EVENTS[eventKey].points.length);
+}
+function record(ai,pi){
+  if(!running&&elapsedBefore===0){show('先にスタート');return}
+  const a=athletes[ai];
+  if(a.splits.length!==pi){show('次のボタンだけ押せます');return}
+  a.splits.push(nowElapsed());
+  render();save();
+  if(allFinished())stop(false);
+}
+function undo(ai){athletes[ai].splits.pop();render();save()}
+function finishedList(){
+  const gi=EVENTS[eventKey].points.length-1;
+  return athletes.map((a,i)=>({a,i,t:a.splits[gi]})).filter(x=>x.t!=null).sort((a,b)=>a.t-b.t);
+}
+function rankOf(a){
+  const r=finishedList().findIndex(x=>x.a===a);
+  return r>=0?r+1:'';
+}
+
+function renderNames(){
+  const el=$('names');el.innerHTML='';
+  el.style.gridTemplateColumns=`repeat(${athleteCount},1fr)`;
+  athletes.forEach((a,i)=>{
+    const input=document.createElement('input');
+    input.value=a.name;
+    input.placeholder=`選手${i+1}`;
+    input.addEventListener('change',e=>{athletes[i].name=e.target.value.trim()||`選手${i+1}`;render();save()});
+    el.appendChild(input);
+  });
+}
+function renderGrid(){
+  const ev=EVENTS[eventKey];
+  const grid=$('lapGrid');
+  grid.innerHTML='';
+  grid.style.gridTemplateColumns=`52px repeat(${athleteCount},1fr)`;
+
+  ev.points.forEach((p,pi)=>{
+    const label=document.createElement('div');
+    label.className='lap-label';
+    label.textContent=p;
+    grid.appendChild(label);
+
+    athletes.forEach((a,ai)=>{
+      const done=a.splits[pi]!=null;
+      const next=a.splits.length===pi;
+      const isGoal=pi===ev.points.length-1;
+
+      const btn=document.createElement('button');
+      btn.className='tap '+(eventKey==='goal'?'goalOnly ':'')+(done?'done':next?(isGoal?'goal next':'next'):'locked');
+      btn.disabled=!next||done;
+
+      const rank=(eventKey==='goal'&&done)?`<span class="rank">${rankOf(a)}着</span>`:'';
+      const text=done?fmt(a.splits[pi]):(next?(isGoal?'GOAL':'押す'):'');
+      btn.innerHTML=`${rank}<span class="name">${esc(a.name)}</span><span class="time">${text}</span>`;
+      btn.addEventListener('click',()=>record(ai,pi));
+      grid.appendChild(btn);
+    });
+  });
+
+  const ug=$('undoGrid');
+  ug.innerHTML='';
+  ug.style.gridTemplateColumns=`repeat(${athleteCount},1fr)`;
+  ug.style.marginLeft='58px';
+  athletes.forEach((a,ai)=>{
+    const b=document.createElement('button');
+    b.className='ghost undo';
+    b.textContent='戻す';
+    b.disabled=!a.splits.length;
+    b.addEventListener('click',()=>undo(ai));
+    ug.appendChild(b);
+  });
+}
+function renderTable(){
+  const ev=EVENTS[eventKey];
+  const thead=document.querySelector('#resultTable thead');
+  const tbody=document.querySelector('#resultTable tbody');
+  tbody.innerHTML='';
+
+  if(eventKey==='goal'){
+    thead.innerHTML='<tr><th>着順</th><th>選手</th><th>ゴール</th><th>着差</th></tr>';
+    const list=finishedList();
+    const first=list.length?list[0].t:null;
+    athletes.forEach(a=>{
+      const t=a.splits[0];
+      const r=t==null?'':rankOf(a);
+      const gap=t!=null&&first!=null?t-first:null;
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${r}</td><td>${esc(a.name)}</td><td>${fmt(t)}</td><td>${gap===0?'±0.00':fmt(gap)}</td>`;
+      tbody.appendChild(tr);
+    });
+  }else{
+    thead.innerHTML='<tr><th>選手</th>'+ev.points.map(p=>`<th>${p}</th>`).join('')+'</tr>';
+    athletes.forEach(a=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${esc(a.name)}</td>`+ev.points.map((_,i)=>`<td>${fmt(a.splits[i])}</td>`).join('');
+      tbody.appendChild(tr);
+    });
+  }
+}
+function render(){
+  $('eventSelect').value=eventKey;
+  $('countSelect').value=String(athleteCount);
+  $('hint').textContent=EVENTS[eventKey].hint+' 全員がゴールしたら自動で止まります。押し間違いは下の「戻す」。';
+  renderNames();
+  renderGrid();
+  renderTable();
+}
+
+$('startBtn').addEventListener('click',start);
+$('stopBtn').addEventListener('click',()=>stop(true));
+$('resetBtn').addEventListener('click',resetAll);
+$('eventSelect').addEventListener('change',e=>setEvent(e.target.value));
+$('countSelect').addEventListener('change',e=>setCount(e.target.value));
+
+load();
+render();
+</script>
+</body>
+</html>
